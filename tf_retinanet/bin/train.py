@@ -158,7 +158,8 @@ def main(args=None):
 	# Start training.
 	return training_model.fit(
 		train_generator,
-		steps_per_epoch=train_config['steps_per_epoch'],
+		validation_data=validation_generator,
+        steps_per_epoch=train_config['steps_per_epoch'],
 		epochs=train_config['epochs'],
 		verbose=1,
 		callbacks=callbacks,
