@@ -28,7 +28,7 @@ default_backbone_config = {
 
 
 default_callbacks_config = {
-	'snapshots_path' : os.path.join(str(Path.home()), 'retinanet-snapshots'),
+	'snapshots_path' : '/code/tf-retinanet-snapshots',
 	'project_name'   : datetime.now().strftime('%Y_%m_%d_%H_%M_%S'),
 }
 
