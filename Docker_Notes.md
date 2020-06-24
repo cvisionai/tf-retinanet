@@ -1,6 +1,7 @@
 # Instructions for tf-retinanet to install and run
 
-pip install opencv-python Pillow
+apt install -y libsm6 libxext6 libxrender1
+pip install opencv-python Pillow progressbar2 dill pyyaml
 python setup.py build_ext --inplace
 python setup.py develop --user
 cd ..
@@ -14,3 +15,4 @@ git clone https://github.com/fizyr/tf-retinanet-generators-coco.git
 for each of these do:
 
 python setup.py develop --user
+
