@@ -21,6 +21,8 @@ import os
 import sys
 
 import tensorflow as tf
+from tensorflow.keras.layers import BatchNormalization
+BatchNormalization._USE_V2_BEHAVIOR = False
 
 
 # Allow relative imports when being executed as script.
@@ -33,9 +35,11 @@ from ..             import losses
 from ..             import models
 from ..backbones    import get_backbone
 from ..callbacks    import get_callbacks
+from ..callbacks.eval import Evaluate
 from ..generators   import get_generators
 from ..utils.gpu    import setup_gpu
 from ..utils.config import dump_yaml, make_training_config
+from ..utils.eval	import evaluate
 
 
 def parse_args(args):
@@ -94,12 +98,14 @@ def main(args=None):
 	backbone = get_backbone(config['backbone'])
 
 	# Get the generators and the submodels updated with info of the generators.
-	generators, submodels = get_generators(
+	generators, submodels, generator_config = get_generators(
 		config['generator'],
 		submodels_manager,
 		preprocess_image=backbone.preprocess_image
 	)
 
+	config.update({'generator' : generator_config})
+	
 	# Get train generator.
 	if 'train' not in generators:
 		raise ValueError('Could not get train generator.')
@@ -111,7 +117,7 @@ def main(args=None):
 		validation_generator = generators['validation']
 
 	# If provided, get evaluation callback.
-	evaluation_callback = None
+	evaluation_callback = Evaluate
 	if 'evaluation_callback' in generators:
 		evaluation_callback = generators['evaluation_callback']
 
