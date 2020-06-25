@@ -43,8 +43,8 @@ class Generator(tf.keras.utils.Sequence):
 
 	def __init__(
 		self,
-		transform_generator=None,
-		visual_effect_generator=None,
+		transform_generator_class=None,
+		visual_effect_generator_class=None,
 		batch_size=1,
 		group_method='ratio',  # one of 'none', 'random', 'ratio'
 		shuffle_groups=True,
@@ -54,7 +54,8 @@ class Generator(tf.keras.utils.Sequence):
 		compute_anchor_targets=anchor_targets_bbox,
 		compute_shapes=guess_shapes,
 		preprocess_image=preprocess_image,
-		anchors_config=None
+		anchors_config=None,
+		**kwargs
 	):
 		""" Initialize Generator object.
 		Args
@@ -71,8 +72,8 @@ class Generator(tf.keras.utils.Sequence):
 			preprocess_image        : Function handler for preprocessing an image (scaling / normalizing) for passing through a network.
 			anchors_config          : Configuration for anchors.
 		"""
-		self.transform_generator     = transform_generator
-		self.visual_effect_generator = visual_effect_generator
+		self.transform_generator     = transform_generator_class
+		self.visual_effect_generator = visual_effect_generator_class
 		self.batch_size              = int(batch_size)
 		self.group_method            = group_method
 		self.shuffle_groups          = shuffle_groups
