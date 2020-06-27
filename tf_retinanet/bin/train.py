@@ -21,9 +21,10 @@ import os
 import sys
 
 import tensorflow as tf
+'''
 from tensorflow.keras.layers import BatchNormalization
 BatchNormalization._USE_V2_BEHAVIOR = False
-
+'''
 
 # Allow relative imports when being executed as script.
 if __name__ == "__main__" and __package__ is None:
@@ -87,7 +88,7 @@ def main(args=None):
 
 	# Parse command line and configuration file settings.
 	config = make_training_config(args)
-
+	#print(config)
 	# Set gpu configuration.
 	setup_gpu(config['train']['gpu'])
 
@@ -161,10 +162,12 @@ def main(args=None):
 	# Dump the training config in the same folder as the weights.
 	dump_yaml(config)
 
+	print(train_generator.batch_size)
+	print(train_generator.image_min_side)
+	print(len(train_generator))
 	# Start training.
 	return training_model.fit(
 		train_generator,
-		validation_data=validation_generator,
         steps_per_epoch=train_config['steps_per_epoch'],
 		epochs=train_config['epochs'],
 		verbose=1,
