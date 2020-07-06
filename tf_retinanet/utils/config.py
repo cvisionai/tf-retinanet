@@ -122,7 +122,7 @@ def make_training_config(args):
 	if args.config:
 		config = parse_yaml(args.config)
 	config = set_defaults(config, default_training_config)
-
+	
 	# Additional config; start from this so it can be overwritten by the other command line options.
 	if args.o:
 		config = parse_additional_options(config, args.o)
