@@ -21,6 +21,7 @@ import tensorflow as tf
 import numpy as np
 import os
 import time
+import pickle
 
 import cv2
 import progressbar
@@ -55,68 +56,87 @@ def _compute_ap(recall, precision):
 
 
 def _get_detections(generator, model, score_threshold=0.05, max_detections=100, save_path=None):
-	""" Get the detections from the model using the generator.
-	The result is a list of lists such that the size is:
-		all_detections[num_images][num_classes] = detections[num_detections, 4 + num_classes]
-	# Arguments
-		generator       : The generator used to run images through the model.
-		model           : The model to run on the images.
-		score_threshold : The score confidence threshold to use.
-		max_detections  : The maximum number of detections to use per image.
-		save_path       : The path to save the images with visualized detections to.
-	# Returns
-		A list of lists containing the detections for each image in the generator.
-	"""
-	all_detections = [[None for i in range(generator.num_classes()) if generator.has_label(i)] for j in range(generator.size())]
-	all_inferences = [None for i in range(generator.size())]
+    """ Get the detections from the model using the generator.
+    The result is a list of lists such that the size is:
+        all_detections[num_images][num_classes] = detections[num_detections, 4 + num_classes]
+    # Arguments
+        generator       : The generator used to run images through the model.
+        model           : The model to run on the images.
+        score_threshold : The score confidence threshold to use.
+        max_detections  : The maximum number of detections to use per image.
+        save_path       : The path to save the images with visualized detections to.
+    # Returns
+        A list of lists containing the detections for each image in the generator.
+    """
+    all_detections = [[None for i in range(generator.num_classes()) if generator.has_label(i)] for j in range(generator.size())]
+    all_inferences = [None for i in range(generator.size())]
+    results=[]
+    for i in progressbar.progressbar(range(generator.size()), prefix='Running network: '):
+        raw_image    = generator.load_image(i)
+        image        = generator.preprocess_image(raw_image.copy())
+        image, scale = generator.resize_image(image)
+        if tf.keras.backend.image_data_format() == 'channels_first':
+            image = image.transpose((2, 0, 1))
 
-	for i in progressbar.progressbar(range(generator.size()), prefix='Running network: '):
-		raw_image    = generator.load_image(i)
-		image        = generator.preprocess_image(raw_image.copy())
-		image, scale = generator.resize_image(image)
+        # run network
+        start = time.time()
+        boxes, scores, labels = model.predict(np.expand_dims(image, axis=0))[:3]
+        inference_time = time.time() - start
 
-		if tf.keras.backend.image_data_format() == 'channels_first':
-			image = image.transpose((2, 0, 1))
+        # correct boxes for image scale
+        #print("pre-scale: ")
+        #print(boxes)
+        boxes /= scale
+        #print("post-scale: ")
+        #print(boxes)
 
-		# run network
-		start = time.time()
-		boxes, scores, labels = model.predict(np.expand_dims(image, axis=0))[:3]
-		inference_time = time.time() - start
+        # select indices which have a score above the threshold
+        indices = np.where(scores[0, :] > score_threshold)[0]
 
-		# correct boxes for image scale
-		boxes /= scale
+        # select those scores
+        scores = scores[0][indices]
 
-		# select indices which have a score above the threshold
-		indices = np.where(scores[0, :] > score_threshold)[0]
+        # find the order with which to sort the scores
+        scores_sort = np.argsort(-scores)[:max_detections]
 
-		# select those scores
-		scores = scores[0][indices]
+        # select detections
+        image_boxes      = boxes[0, indices[scores_sort], :]
+        image_scores     = scores[scores_sort]
+        image_labels     = labels[0, indices[scores_sort]]
+        image_detections = np.concatenate([image_boxes, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
 
-		# find the order with which to sort the scores
-		scores_sort = np.argsort(-scores)[:max_detections]
+        if save_path is not None:
+            draw_annotations(raw_image, generator.load_annotations(i), label_to_name=generator.label_to_name)
+            draw_detections(raw_image, image_boxes, image_scores, image_labels, label_to_name=generator.label_to_name, score_threshold=score_threshold)
 
-		# select detections
-		image_boxes      = boxes[0, indices[scores_sort], :]
-		image_scores     = scores[scores_sort]
-		image_labels     = labels[0, indices[scores_sort]]
-		image_detections = np.concatenate([image_boxes, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
+            cv2.imwrite(os.path.join(save_path, '{}.png'.format(i)), raw_image)
 
-		if save_path is not None:
-			draw_annotations(raw_image, generator.load_annotations(i), label_to_name=generator.label_to_name)
-			draw_detections(raw_image, image_boxes, image_scores, image_labels, label_to_name=generator.label_to_name, score_threshold=score_threshold)
+            # compute predicted labels and scores
 
-			cv2.imwrite(os.path.join(save_path, '{}.png'.format(i)), raw_image)
+            for j,detection in enumerate(image_detections):
+                label = detection[-1]
+                # append detections for each positively labeled class
+                image_result = {
+                    'image_id'    : generator.image_path(i),
+                    'category_id' : image_labels[j],
+                    'scores'      : image_scores[j],
+                    'bbox'        : image_boxes[j],
+                }
+                # append detection to results
+                results.append(image_result)
 
-		# copy detections to all_detections
-		for label in range(generator.num_classes()):
-			if not generator.has_label(label):
-				continue
+        # copy detections to all_detections
+        for label in range(generator.num_classes()):
+            if not generator.has_label(label):
+                continue
 
-			all_detections[i][label] = image_detections[image_detections[:, -1] == label, :-1]
+            all_detections[i][label] = image_detections[image_detections[:, -1] == label, :-1]
 
-		all_inferences[i] =  inference_time
+        all_inferences[i] =  inference_time
 
-	return all_detections, all_inferences
+    pickle.dump(results,open('/code/tf-retinanet-snapshots/scallop-retrain-candidates/results_out.pickle','wb'))
+
+    return all_detections, all_inferences
 
 
 def _get_annotations(generator):

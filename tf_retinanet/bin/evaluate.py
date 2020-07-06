@@ -35,7 +35,7 @@ from ..generators    import get_generators
 from ..utils.anchors import parse_anchor_parameters
 from ..utils.gpu     import setup_gpu
 from ..utils.config  import make_evaluation_config
-
+from ..utils.eval    import evaluate
 
 def parse_args(args):
 	""" Parse the command line arguments.
@@ -83,7 +83,7 @@ def main(args=None):
 	backbone = get_backbone(config['backbone'])
 
 	# Get generators and submodels.
-	generators, submodels = get_generators(
+	generators, submodels, eval_config = get_generators(
 		config['generator'],
 		submodels_manager,
 		preprocess_image=backbone.preprocess_image
@@ -93,12 +93,12 @@ def main(args=None):
 	if 'test' not in generators:
 		raise ValueError('Could not get test generator.')
 	test_generator = generators['test']
-
+	'''
 	# Get evaluation procedure.
 	if 'evaluation_procedure' not in generators:
 		raise ValueError('Evaluation not implement yet.')
 	evaluate = generators['evaluation_procedure']
-
+	'''
 	# Load model.
 	if config['evaluate']['weights'] is None:
 		raise ValueError('Could not get weights.')

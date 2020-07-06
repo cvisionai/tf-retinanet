@@ -34,6 +34,7 @@ from ..generators    import get_generators
 from ..utils.anchors import parse_anchor_parameters
 from ..utils.gpu     import setup_gpu
 from ..utils.config  import make_conversion_config
+from ..utils.image   import preprocess_image
 
 
 def parse_args(args):
@@ -79,7 +80,7 @@ def main(args=None, config=None):
 	backbone = get_backbone(config['backbone'])
 
 	# Get the generators and the submodels updated with info of the generators.
-	generators, submodels = get_generators(
+	generators, submodels,generator_config = get_generators(
 		config['generator'],
 		submodels_manager,
 		preprocess_image=backbone.preprocess_image
