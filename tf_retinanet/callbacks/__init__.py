@@ -63,7 +63,6 @@ def get_callbacks(
             min_lr=1e-8)
     callbacks.append(lr_scheduler)
 
-    '''
     # Evaluate the model.
     if validation_generator:
         if not evaluation_callback:
@@ -71,6 +70,5 @@ def get_callbacks(
         evaluation_callback = evaluation_callback(validation_generator)
         evaluation_callback = RedirectModel(evaluation_callback, prediction_model)
         callbacks.append(evaluation_callback)
-    '''
 
     return callbacks
