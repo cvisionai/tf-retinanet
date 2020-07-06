@@ -28,9 +28,9 @@ BatchNormalization._USE_V2_BEHAVIOR = False
 
 # Allow relative imports when being executed as script.
 if __name__ == "__main__" and __package__ is None:
-	sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-	import tf_retinanet.bin  # noqa: F401
-	__package__ = "tf_retinanet.bin"
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+    import tf_retinanet.bin  # noqa: F401
+    __package__ = "tf_retinanet.bin"
 
 from ..             import losses
 from ..             import models
@@ -45,7 +45,7 @@ from ..utils.eval	import evaluate
 
 def parse_args(args):
     """ Parse the command line arguments.
-	"""
+    """
     parser = argparse.ArgumentParser(
         description="Simple training script for training a RetinaNet network."
     )
@@ -250,74 +250,74 @@ def parse_args(args):
 
 
 def main(args=None):
-	# Parse command line arguments.
-	if args is None:
-		args = sys.argv[1:]
-	args = parse_args(args)
+    # Parse command line arguments.
+    if args is None:
+        args = sys.argv[1:]
+    args = parse_args(args)
 
-	# Parse command line and configuration file settings.
-	config = make_training_config(args)
-	#print(config)
-	# Set gpu configuration.
-	setup_gpu(config['train']['gpu'])
+    # Parse command line and configuration file settings.
+    config = make_training_config(args)
+    #print(config)
+    # Set gpu configuration.
+    setup_gpu(config['train']['gpu'])
 
-	# Get the submodels manager.
-	submodels_manager = models.submodels.SubmodelsManager(config['submodels'])
+    # Get the submodels manager.
+    submodels_manager = models.submodels.SubmodelsManager(config['submodels'])
 
-	# Get the backbone.
-	backbone = get_backbone(config['backbone'])
+    # Get the backbone.
+    backbone = get_backbone(config['backbone'])
 
-	# Get the generators and the submodels updated with info of the generators.
-	generators, submodels, generator_config = get_generators(
-		config['generator'],
-		submodels_manager,
-		preprocess_image=backbone.preprocess_image
-	)
+    # Get the generators and the submodels updated with info of the generators.
+    generators, submodels, generator_config = get_generators(
+        config['generator'],
+        submodels_manager,
+        preprocess_image=backbone.preprocess_image
+    )
 
-	config.update({'generator' : generator_config})
-	
-	# Get train generator.
-	if 'train' not in generators:
-		raise ValueError('Could not get train generator.')
-	train_generator = generators['train']
+    config.update({'generator' : generator_config})
 
-	# If provided, get validation generator.
-	validation_generator = None
-	if 'validation' in generators:
-		validation_generator = generators['validation']
+    # Get train generator.
+    if 'train' not in generators:
+        raise ValueError('Could not get train generator.')
+    train_generator = generators['train']
 
-	# If provided, get evaluation callback.
-	evaluation_callback = Evaluate
-	if 'evaluation_callback' in generators:
-		evaluation_callback = generators['evaluation_callback']
+    # If provided, get validation generator.
+    validation_generator = None
+    if 'validation' in generators:
+        validation_generator = generators['validation']
 
-	# Create the model.
-	model = backbone.retinanet(submodels=submodels)
+    # If provided, get evaluation callback.
+    evaluation_callback = Evaluate
+    if 'evaluation_callback' in generators:
+        evaluation_callback = generators['evaluation_callback']
 
-	# If needed load weights.
-	if config['train']['weights'] is not None and config['train']['weights'] != 'imagenet':
-		model.load_weights(config['train']['weights'], by_name=True)
+    # Create the model.
+    model = backbone.retinanet(submodels=submodels)
 
-	# Create prediction model.
-	training_model   = model
-	prediction_model = models.retinanet.retinanet_bbox(training_model)
+    # If needed load weights.
+    if config['train']['weights'] is not None and config['train']['weights'] != 'imagenet':
+        model.load_weights(config['train']['weights'], by_name=True)
 
-	# Create the callbacks.
-	callbacks = get_callbacks(
-		config['callbacks'],
-		model,
-		training_model,
-		prediction_model,
-		validation_generator,
-		evaluation_callback,
-	)
+# Create prediction model.
+    training_model   = model
+    prediction_model = models.retinanet.retinanet_bbox(training_model)
 
-	# Print model.
-	print(training_model.summary())
+    # Create the callbacks.
+    callbacks = get_callbacks(
+        config['callbacks'],
+        model,
+        training_model,
+        prediction_model,
+        validation_generator,
+        evaluation_callback,
+    )
 
-	loss = {}
-	for submodel in submodels:
-		loss[submodel.get_name()] = submodel.loss()
+    # Print model.
+    print(training_model.summary())
+
+    loss = {}
+    for submodel in submodels:
+        loss[submodel.get_name()] = submodel.loss()
 
     # Setup learning rate decay
     if config["callbacks"]["lr_scheduler"] and config["train"]["optimizer"] != "nadam": 
@@ -341,16 +341,16 @@ def main(args=None):
     else:
         opt=tf.keras.optimizers.Adam(lr=lr)
 
-	# Compile model.
-	training_model.compile(
-		loss=loss,
-		optimizer=opt
-	)
+    # Compile model.
+    training_model.compile(
+        loss=loss,
+        optimizer=opt
+    )
 
-	# Parse training parameters.
-	train_config = config['train']
-	# Dump the training config in the same folder as the weights.
-	dump_yaml(config)
+    # Parse training parameters.
+    train_config = config['train']
+    # Dump the training config in the same folder as the weights.
+    dump_yaml(config)
     print(config)
 
     # Start training.
