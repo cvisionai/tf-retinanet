@@ -93,18 +93,18 @@ def parse_args(args):
         help="If True, shuffles the groups each epoch.",
         action="store_true"
     )
+
     parser.add_argument(
         "--image-min-side",
         help="Rescale the image so the smallest side is min_side.",
         type=int,
-        default=1080
     )
     parser.add_argument(
         "--image-max-side",
         help="Rescale the image if the largest side is larger than max_side.",
         type=int,
-        default=1920
     )
+
 
     # Backone config.
     parser.add_argument(
@@ -137,14 +137,12 @@ def parse_args(args):
     parser.add_argument(
         "--lr",
         help="Learning rate.",
-        type=float,
-        default=0.0001
+        type=float
     )
     parser.add_argument(
         "--optimizer",
         type=str,
         help='Optimizer algorithm to use in training (adam, nadam or SGD).',
-        default='nadam'
     )
     parser.add_argument(
         "--multiprocessing",
@@ -173,55 +171,51 @@ def parse_args(args):
     subparsers.required = False
 
     # CSV datatype generator config
+    '''
     csv_parser = subparsers.add_parser("csv")
     csv_parser.add_argument(
-        "train_annotations",
+        "--train_annotations",
         help="Path to CSV file containing annotations for training.",
         default="../data/annotations.csv",
         type=str
     )
     csv_parser.add_argument(
-        "train_classes", 
+        "--train_classes", 
         help="Path to a CSV file containing class label mapping.",
         default="../data/classes.csv",
         type=str
     )
+    '''
 
     # Callbacks config.
     parser.add_argument(
         "--tensorboard",
         help="Enable TensorBoard callback",
         action="store_true",
-        default=True
     )
     parser.add_argument(
         "--tensorboard_path",
         help="Path to store TensorBoard Logs",
-        default="../data/tensorboard_logs",
         type=str
     )
     parser.add_argument(
         "--earlystopping",
         help="Enable EarlyStopping while training",
         action="store_true",
-        default=True
     )
     parser.add_argument(
         "--earlystopping_patience",
         help="How many steps to wait before stopping if criterion is met",
-        default=3000,
         type=int
     )
     parser.add_argument(
         "--reduceLR",
         help="Reduce optimizer learning rate if loss doesn't keep decreasing",
         action="store_true",
-        default=False
     )
     parser.add_argument(
         "--reduceLR_patience",
         help="How many steps should the learning rate stay constant on a plateau",
-        default=300,
         type=int
     )
     parser.add_argument(
@@ -234,13 +228,11 @@ def parse_args(args):
         "--decay_steps",
         help="Number of steps the learning rate keeps decaying.",
         type=int,
-        default=1000000
     )
     parser.add_argument(
         "--decay_rate",
         help="The rate which the lr decays.",
         type=float,
-        default=0.95
     )
 
     # Additional config.
@@ -320,7 +312,7 @@ def main(args=None):
         loss[submodel.get_name()] = submodel.loss()
 
     # Setup learning rate decay
-    if config["callbacks"]["lr_scheduler"] and config["train"]["optimizer"] != "nadam": 
+    if config["callbacks"].get("lr_scheduler",False) and config["train"]["optimizer"] != "nadam": 
         learning_rate_fn = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=float(config["train"]["lr"]),
             decay_steps=int(config["callbacks"]["decay_steps"]),
