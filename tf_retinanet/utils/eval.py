@@ -73,22 +73,78 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
     results=[]
     for i in progressbar.progressbar(range(generator.size()), prefix='Running network: '):
         raw_image    = generator.load_image(i)
-        image        = generator.preprocess_image(raw_image.copy())
-        image, scale = generator.resize_image(image)
-        if tf.keras.backend.image_data_format() == 'channels_first':
-            image = image.transpose((2, 0, 1))
+        orig_image        = generator.preprocess_image(raw_image.copy())
 
-        # run network
-        start = time.time()
-        boxes, scores, labels = model.predict(np.expand_dims(image, axis=0))[:3]
-        inference_time = time.time() - start
+        if generator.image_crop_width is not None:
+            
+            x_tiles = np.tile(
+                [generator.tile_params.get('x_stride')*x_tile for x_tile in range(generator.tile_params.get('x_strides'))],
+                generator.tile_params.get('y_strides'))
+            
+            y_tiles = [generator.tile_params.get('y_stride')*y_tile for y_tile in range(generator.tile_params.get('y_strides'))]
+            y_tiles = np.concatenate([np.tile(y,generator.tile_params.get('x_strides')) for y in y_tiles])
 
-        # correct boxes for image scale
-        #print("pre-scale: ")
-        #print(boxes)
-        boxes /= scale
-        #print("post-scale: ")
-        #print(boxes)
+            joined_tiles = [{'x' : x,'y': y} for x,y in zip(x_tiles,y_tiles)]
+
+            for j,tile in enumerate(joined_tiles):
+                image = generator.crop_val_image(orig_image,tile)
+                #print(image.shape)
+                image, scale = generator.resize_image(image)
+                if tf.keras.backend.image_data_format() == 'channels_first':
+                    image = image.transpose((2, 0, 1))
+
+                # run network
+                start = time.time()
+                tile_boxes, tile_scores, tile_labels = model.predict(np.expand_dims(image, axis=0))[:3]
+                inference_time = time.time() - start
+                tile_boxes = np.squeeze(tile_boxes)
+                tile_scores = np.squeeze(tile_scores)
+                tile_labels = np.squeeze(tile_labels)
+
+                tile_boxes[:,0] += tile.get('x')
+                tile_boxes[:,1] += tile.get('y')
+                tile_boxes[:,2] += tile.get('x')
+                tile_boxes[:,3] += tile.get('y')
+
+                # correct boxes for image scale
+                tile_boxes /= scale
+                #print(tile_scores.shape)
+                #print(tile_labels.shape)
+                if j==0:
+                    boxes = tile_boxes
+                    scores = tile_scores
+                    labels = tile_labels
+                else:
+                    boxes = np.vstack((boxes,tile_boxes))
+                    scores = np.concatenate((scores,tile_scores))
+                    labels = np.concatenate((labels,tile_labels))
+            
+            #print(boxes.shape)
+            selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
+                    boxes, scores, 1000, iou_threshold=1.0, score_threshold=0.1,
+                    soft_nms_sigma=0.5)
+            boxes = np.expand_dims(tf.gather(boxes, selected_indices),axis=0)
+            scores = tf.gather(scores, selected_indices)
+            labels = tf.gather(labels, selected_indices)
+            scores = np.expand_dims(tf.gather(scores, selected_indices),axis=0)
+            labels = np.expand_dims(tf.gather(labels, selected_indices),axis=0)
+
+        else:
+            image, scale = generator.resize_image(orig_image)
+            if tf.keras.backend.image_data_format() == 'channels_first':
+                image = image.transpose((2, 0, 1))
+
+            # run network
+            start = time.time()
+            boxes, scores, labels = model.predict(np.expand_dims(image, axis=0))[:3]
+            inference_time = time.time() - start
+
+            # correct boxes for image scale
+            #print("pre-scale: ")
+            #print(boxes)
+            boxes /= scale
+            #print("post-scale: ")
+            #print(boxes)
 
         # select indices which have a score above the threshold
         indices = np.where(scores[0, :] > score_threshold)[0]
@@ -134,7 +190,7 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
 
         all_inferences[i] =  inference_time
 
-    pickle.dump(results,open('/code/tf-retinanet-snapshots/scallop-retrain-candidates/results_out.pickle','wb'))
+    pickle.dump(results,open('/code/tf-retinanet-snapshots/scallop-retrain-crop/results_out.pickle','wb'))
 
     return all_detections, all_inferences
 

@@ -112,7 +112,6 @@ def parse_additional_options(config, options):
         set_in_dict(config, keys, value)
     return config
 
-
 def make_training_config(args):
     """ Create training config by parsing args from command line and YAML config file, filling the rest with default values.
     Args
@@ -156,10 +155,6 @@ def make_training_config(args):
         config['generator']['details']['image_min_side'] = args.image_min_side
     if args.image_max_side:
         config['generator']['details']['image_max_side'] = args.image_max_side
-    if args.train_annotations:
-        config["generator"]["details"]["train_annotations_path"] = args.train_annotations
-    if args.train_classes:
-        config["generator"]["details"]["train_classes_path"] = args.train_classes
 
     # Train config.
     if args.gpu:
@@ -178,8 +173,6 @@ def make_training_config(args):
         config['train']['max_queue_size'] = args.max_queue_size
     if args.weights:
         config['train']['weights'] = args.weights
-    if args.optimizer:
-        config["train"]["optimizer"] = args.optimizer
     # Callbacks config.
     if args.tensorboard:
         config["callbacks"]["tensorboard"] = args.tensorboard
